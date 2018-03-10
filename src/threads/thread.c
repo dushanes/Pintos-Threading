@@ -28,6 +28,9 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+//List of all threads that are blocked and have a wake up time assigned to it
+static struct list sleeping_threads;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -240,6 +243,16 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+}
+
+void
+thread_sleep (struct thread *t, int64_t wake)
+{	
+	ASSERT (is_thread (t));
+
+	list_push_back(&sleeping_threads, &t);
+	t->status = THREAD_BLOCKED;
+	schedule();
 }
 
 /* Returns the name of the running thread. */
