@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h" //added by Dushane S.
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -89,8 +90,10 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+	int nice;
 	int64_t wake_up;
-	int nice = 0;
+	struct lock wake_up_lock;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -108,6 +111,7 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+void thread_sleep(int64_t);
 void thread_init (void);
 void thread_start (void);
 
@@ -119,7 +123,7 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
-void thread_sleep (struct thread *, int64_t);
+//void thread_sleep (struct thread *, int64_t);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
@@ -139,5 +143,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+static bool ticks_less_than(const struct list_elem*, const struct list_elem*, void*);
 
 #endif /* threads/thread.h */

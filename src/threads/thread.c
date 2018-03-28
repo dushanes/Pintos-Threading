@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -30,7 +31,6 @@ static struct list all_list;
 
 //List of all threads that are blocked and have a wake up time assigned to it
 static struct list sleeping_threads;
-
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -95,7 +95,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  list_init (&sleeping_threads);
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -244,7 +244,7 @@ thread_unblock (struct thread *t)
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
-
+/*
 void
 thread_sleep (struct thread *t, int64_t wake)
 {	
@@ -254,7 +254,7 @@ thread_sleep (struct thread *t, int64_t wake)
 	t->status = THREAD_BLOCKED;
 	schedule();
 }
-
+*/
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 
@@ -360,17 +360,16 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  thread_current ()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the system load average. */
@@ -572,9 +571,22 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
-
+  int64_t start = timer_ticks();
+  
+  if(!list_empty(&sleeping_threads)){
+	  struct list_elem *temp = list_front(&sleeping_threads);
+	  struct thread *t_temp = list_entry (temp, struct thread, elem);
+	  
+	  if(t_temp->wake_up <= start)
+	  {
+		list_pop_front(&sleeping_threads);
+		thread_unblock(t_temp);
+		//t_temp->status = THREAD_READY;
+	  }
+  }
+	
   if (cur != next)
-    prev = switch_threads (cur, next);
+  prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
 }
 
@@ -590,6 +602,27 @@ allocate_tid (void)
   lock_release (&tid_lock);
 
   return tid;
+}
+
+void
+thread_sleep(int64_t ticks)
+{
+  struct thread *cur = thread_current ();
+  cur->wake_up = ticks;
+  cur->status = THREAD_BLOCKED;
+  list_insert_ordered(&sleeping_threads, &cur->elem, ticks_less_than, NULL);
+  
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  schedule ();
+  intr_set_level(old_level);
+}
+
+static bool
+ticks_less_than(const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
+	struct thread *thread_x = list_entry(x, struct thread, elem);
+	struct thread *thread_y = list_entry(y, struct thread, elem);	
+	return thread_x->wake_up < thread_y->wake_up;
 }
 
 /* Offset of `stack' member within `struct thread'.
