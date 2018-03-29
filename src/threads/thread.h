@@ -92,8 +92,7 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
 	int nice;
 	int64_t wake_up;
-	struct lock wake_up_lock;
-
+	int recent_cpu;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -123,7 +122,6 @@ tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
-//void thread_sleep (struct thread *, int64_t);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
@@ -134,7 +132,7 @@ void thread_yield (void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
-void thread_foreach (thread_action_func *, void *);
+void thread_foreach (thread_action_func *t, void *aux);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
@@ -145,4 +143,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 bool ticks_less_than(const struct list_elem*, const struct list_elem*, void*);
 bool priority_greater_than (const struct list_elem*, const struct list_elem*, void*);
+void recalculate_priority(struct thread*, void*);
+void calc_cpu(struct thread*, void*);
+void calc_load_avg(void);
 #endif /* threads/thread.h */
