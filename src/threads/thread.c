@@ -240,21 +240,16 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  if(thread_mlfqs == true)
+  {
+	list_push_back (&ready_list, &t->elem);
+  }else{
+	  list_insert_ordered(&ready_list, &t->elem, priority_greater_than, void
+  }
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
-/*
-void
-thread_sleep (struct thread *t, int64_t wake)
-{	
-	ASSERT (is_thread (t));
 
-	list_push_back(&sleeping_threads, &t);
-	t->status = THREAD_BLOCKED;
-	schedule();
-}
-*/
 /* Returns the name of the running thread. */
 const char *
 thread_name (void) 
@@ -619,10 +614,17 @@ thread_sleep(int64_t ticks)
 }
 
 static bool
-ticks_less_than(const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
+ticks_less_than (const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
 	struct thread *thread_x = list_entry(x, struct thread, elem);
 	struct thread *thread_y = list_entry(y, struct thread, elem);	
 	return thread_x->wake_up < thread_y->wake_up;
+}
+
+static bool
+priority_greater_than (const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
+	struct thread *thread_x = list_entry(x, struct thread, elem);
+	struct thread *thread_y = list_entry(y, struct thread, elem);	
+	return thread_x->wake_up > thread_y->wake_up;
 }
 
 /* Offset of `stack' member within `struct thread'.
