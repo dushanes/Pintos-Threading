@@ -244,7 +244,7 @@ thread_unblock (struct thread *t)
   {
 	list_push_back (&ready_list, &t->elem);
   }else{
-	  list_insert_ordered(&ready_list, &t->elem, priority_greater_than, void
+	list_insert_ordered(&ready_list, &t->elem, priority_greater_than, NULL);
   }
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -613,18 +613,18 @@ thread_sleep(int64_t ticks)
   intr_set_level(old_level);
 }
 
-static bool
+bool
 ticks_less_than (const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
 	struct thread *thread_x = list_entry(x, struct thread, elem);
 	struct thread *thread_y = list_entry(y, struct thread, elem);	
 	return thread_x->wake_up < thread_y->wake_up;
 }
 
-static bool
+bool
 priority_greater_than (const struct list_elem *x, const struct list_elem *y, void *blank UNUSED){
 	struct thread *thread_x = list_entry(x, struct thread, elem);
 	struct thread *thread_y = list_entry(y, struct thread, elem);	
-	return thread_x->wake_up > thread_y->wake_up;
+	return thread_x->priority > thread_y->priority;
 }
 
 /* Offset of `stack' member within `struct thread'.
