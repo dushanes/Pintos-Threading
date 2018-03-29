@@ -126,7 +126,21 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
+  
+  if(!list_empty(&sleeping_threads)){
+	  int64_t start = timer_ticks();
 
+	  struct list_elem *temp = list_front(&sleeping_threads);
+	  struct thread *t_temp = list_entry (temp, struct thread, elem);
+	  
+	  if(t_temp->wake_up <= start)
+	  {
+		list_pop_front(&sleeping_threads);
+		thread_unblock(t_temp);
+		//t_temp->status = THREAD_READY;
+	  }
+  }
+  
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -138,8 +152,13 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
+  if (++thread_ticks >= TIME_SLICE){
+	if(&running_thread()->priority < &t->priority){
+		//struct thread *cur = thread_current();
+		//cur->status = THREAD_READY;
+		intr_yield_on_return ();
+	}
+  }
 }
 
 /* Prints thread statistics. */
@@ -242,12 +261,17 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   if(thread_mlfqs == true)
   {
+	t->status = THREAD_READY;
 	list_push_back (&ready_list, &t->elem);
   }else{
+	t->status = THREAD_READY;
 	list_insert_ordered(&ready_list, &t->elem, priority_greater_than, NULL);
+	/*if(&running_thread()->priority < &t->priority){
+		struct thread *cur = thread_current();
+		cur->status = THREAD_READY;
+	}*/
   }
-  t->status = THREAD_READY;
-  intr_set_level (old_level);
+ intr_set_level (old_level);
 }
 
 /* Returns the name of the running thread. */
@@ -566,19 +590,6 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
-  int64_t start = timer_ticks();
-  
-  if(!list_empty(&sleeping_threads)){
-	  struct list_elem *temp = list_front(&sleeping_threads);
-	  struct thread *t_temp = list_entry (temp, struct thread, elem);
-	  
-	  if(t_temp->wake_up <= start)
-	  {
-		list_pop_front(&sleeping_threads);
-		thread_unblock(t_temp);
-		//t_temp->status = THREAD_READY;
-	  }
-  }
 	
   if (cur != next)
   prev = switch_threads (cur, next);
